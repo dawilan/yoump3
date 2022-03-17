@@ -1,0 +1,61 @@
+#!/usr/bin/env perl
+# Author: Dave Lanning "dawilan"
+
+use strict;
+use warnings;
+use Data::Dumper;
+
+if ( !@ARGV ) {
+    EOM();
+}
+
+download(@ARGV);
+
+
+sub download {
+    my @ids = @_ if @_;
+    foreach my $id ( @ids ) {
+        if ( $id =~ /([\w-]{11,12})/ ) {
+            print "\n\t[RIPPING] ... $1 from $id  ";
+            my $output = qx{youtube-dl --newline --prefer-ffmpeg -x --audio-format mp3 $1};
+            my $filename = _parse_filename($output);
+            my $newfile = $filename;
+            $newfile =~ s/ /_/g;
+            $newfile =~ s/,//g;
+            $newfile =~ s/\.mp3//;
+            $newfile =~ s/\.//g;
+            $newfile =~ s/&//g;
+            $newfile = $newfile . '.mp3';
+            $newfile =~ s/-([\w-]{11,12})\.mp3/\.mp3/;
+            $newfile =~ s/__/_/g;
+
+            if ( rename($filename, $newfile) ) {
+                 print "$newfile created: [SUCCESS]\n\n";
+            } else {
+                print "$filename not moved: [FAILURE] ";
+            }
+        } else {
+            print Dumper( $id );
+            EOM();
+        }
+    }
+}
+
+sub _parse_filename {
+    my @output = @_;
+
+    while ( my $line = shift( @output ) ) {
+        my $regx = '\[ffmpeg\]\sDestination:\s';
+        my @line = split( /\n/, $line );
+        my @file_line = grep(/$regx/, @line);
+        my $file_name = $file_line[0];
+        $file_name =~ s/$regx//;
+        return $file_name;
+    }
+}
+
+sub EOM {
+    print "\nYouMP3 - Rip a Youtube video to MP3 !\n\n";
+    print "\tUsage: yoump3 {youtubeID/YoutubeURL}\n\n";
+    exit;
+}
